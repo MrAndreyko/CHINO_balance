@@ -149,3 +149,24 @@ curl http://localhost:8000/api/v1/assignments/{run_id}
 cd backend
 pytest -q
 ```
+
+
+## Local DB Reset (exact commands)
+
+Use these commands to reset to a clean local state and rerun migrations/seeds:
+
+```bash
+docker compose down -v --remove-orphans
+docker compose up -d db
+# wait for postgres healthcheck to pass
+docker compose up -d backend
+
+docker compose exec backend alembic upgrade head
+docker compose exec backend python -m scripts.seed_defaults
+```
+
+To verify required tables exist:
+
+```bash
+docker compose exec db psql -U postgres -d hotel_balancer -c "\dt"
+```
