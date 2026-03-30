@@ -9,6 +9,7 @@ class AssignmentRun(TimestampMixin, Base):
     __tablename__ = "assignment_runs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    run_type: Mapped[str] = mapped_column(String(32), default="type-balance", nullable=False)
     run_status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     triggered_by: Mapped[str] = mapped_column(String(64), default="system", nullable=False)
     notes: Mapped[str | None] = mapped_column(String(255))

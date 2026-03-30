@@ -116,6 +116,27 @@ Check import status/errors:
 curl http://localhost:8000/api/v1/imports/{job_id}
 ```
 
+
+### 7) Run assignment engine
+
+Run types:
+- `type-balance`
+- `exact-room`
+
+Trigger run:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/assignments/run \
+  -H "Content-Type: application/json" \
+  -d '{"run_type":"type-balance","triggered_by":"ops"}'
+```
+
+Fetch run status:
+
+```bash
+curl http://localhost:8000/api/v1/assignments/{run_id}
+```
+
 ### 6) Verify services
 
 - Backend health: `http://localhost:8000/api/v1/health`
