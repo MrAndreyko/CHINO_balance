@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy import Boolean, Date, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -16,5 +16,9 @@ class Reservation(TimestampMixin, Base):
     arrival_date: Mapped[date] = mapped_column(Date, nullable=False)
     departure_date: Mapped[date] = mapped_column(Date, nullable=False)
     requested_room_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    requested_bed_type: Mapped[str] = mapped_column(String(32), default="unknown", nullable=False)
+    chain_id: Mapped[str | None] = mapped_column(String(64))
+    linked_reservation_id: Mapped[int | None] = mapped_column(ForeignKey("reservations.id", ondelete="SET NULL"))
+    club_access_entitled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     assigned_room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="booked", nullable=False)

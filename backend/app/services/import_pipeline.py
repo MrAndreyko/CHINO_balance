@@ -15,7 +15,7 @@ from app.models.reservation import Reservation
 from app.models.room import Room
 
 REQUIRED_COLUMNS: dict[ImportDataset, set[str]] = {
-    ImportDataset.ROOM_MASTER: {"room_number", "room_type", "floor"},
+    ImportDataset.ROOM_MASTER: {"room_number", "room_type", "bed_type", "floor"},
     ImportDataset.REQUEST_CODE_RULES: {"code", "description", "default_weight"},
     ImportDataset.RESERVATIONS: {
         "external_id",
@@ -24,7 +24,7 @@ REQUIRED_COLUMNS: dict[ImportDataset, set[str]] = {
         "departure_date",
         "requested_room_type",
     },
-    ImportDataset.INVENTORY_OVERRIDES: {"room_number", "override_date", "capacity_delta", "reason"},
+    ImportDataset.INVENTORY_OVERRIDES: {"room_number", "override_date", "capacity_delta", "status", "reason"},
 }
 
 
@@ -102,10 +102,14 @@ def validate_rows(dataset: ImportDataset, rows: list[dict[str, Any]], db: Sessio
                 add_error("room_number", "Required")
             if not str(normalized.get("room_type", "")).strip():
                 add_error("room_type", "Required")
+            if not str(normalized.get("bed_type", "")).strip():
+                add_error("bed_type", "Required")
             try:
                 normalized["floor"] = int(normalized.get("floor"))
             except (TypeError, ValueError):
                 add_error("floor", "Must be an integer")
+            for flag in ["is_hardblocked", "is_accessible", "is_near_elevator", "is_club_floor"]:
+                normalized[flag] = str(normalized.get(flag, "false")).strip().lower() in {"1", "true", "yes", "y"}
 
         elif dataset is ImportDataset.REQUEST_CODE_RULES:
             if not str(normalized.get("code", "")).strip():
@@ -118,7 +122,7 @@ def validate_rows(dataset: ImportDataset, rows: list[dict[str, Any]], db: Sessio
                 add_error("default_weight", "Must be numeric")
 
         elif dataset is ImportDataset.RESERVATIONS:
-            for col in ["external_id", "guest_name", "requested_room_type"]:
+            for col in ["external_id", "guest_name", "requested_room_type", "requested_bed_type"]:
                 if not str(normalized.get(col, "")).strip():
                     add_error(col, "Required")
             arrival = _parse_date(normalized.get("arrival_date"))
@@ -131,6 +135,7 @@ def validate_rows(dataset: ImportDataset, rows: list[dict[str, Any]], db: Sessio
                 add_error("departure_date", "Must be after arrival_date")
             normalized["arrival_date"] = arrival
             normalized["departure_date"] = departure
+            normalized["club_access_entitled"] = str(normalized.get("club_access_entitled", "false")).strip().lower() in {"1", "true", "yes", "y"}
 
         elif dataset is ImportDataset.INVENTORY_OVERRIDES:
             room_number = str(normalized.get("room_number", "")).strip()
@@ -148,6 +153,8 @@ def validate_rows(dataset: ImportDataset, rows: list[dict[str, Any]], db: Sessio
                 normalized["capacity_delta"] = int(normalized.get("capacity_delta"))
             except (TypeError, ValueError):
                 add_error("capacity_delta", "Must be an integer")
+            if not str(normalized.get("status", "")).strip():
+                add_error("status", "Required")
             if not str(normalized.get("reason", "")).strip():
                 add_error("reason", "Required")
 
@@ -218,13 +225,23 @@ def commit_job(job: ImportJob, db: Session) -> int:
                     Room(
                         room_number=room_number,
                         room_type=str(row["room_type"]).strip(),
+                        bed_type=str(row["bed_type"]).strip(),
                         floor=int(row["floor"]),
                         is_active=True,
+                        is_hardblocked=bool(row.get("is_hardblocked", False)),
+                        is_accessible=bool(row.get("is_accessible", False)),
+                        is_near_elevator=bool(row.get("is_near_elevator", False)),
+                        is_club_floor=bool(row.get("is_club_floor", False)),
                     )
                 )
             else:
                 existing.room_type = str(row["room_type"]).strip()
+                existing.bed_type = str(row["bed_type"]).strip()
                 existing.floor = int(row["floor"])
+                existing.is_hardblocked = bool(row.get("is_hardblocked", False))
+                existing.is_accessible = bool(row.get("is_accessible", False))
+                existing.is_near_elevator = bool(row.get("is_near_elevator", False))
+                existing.is_club_floor = bool(row.get("is_club_floor", False))
             applied_rows += 1
 
     elif job.dataset is ImportDataset.REQUEST_CODE_RULES:
@@ -253,6 +270,8 @@ def commit_job(job: ImportJob, db: Session) -> int:
                 "arrival_date": _parse_date(row["arrival_date"]),
                 "departure_date": _parse_date(row["departure_date"]),
                 "requested_room_type": str(row["requested_room_type"]).strip(),
+                "requested_bed_type": str(row["requested_bed_type"]).strip(),
+                "club_access_entitled": bool(row.get("club_access_entitled", False)),
                 "status": "booked",
             }
             if existing is None:
@@ -273,6 +292,7 @@ def commit_job(job: ImportJob, db: Session) -> int:
                     room_id=room.id,
                     override_date=_parse_date(row["override_date"]),
                     capacity_delta=int(row["capacity_delta"]),
+                    status=str(row["status"]).strip(),
                     reason=str(row["reason"]).strip(),
                 )
             )

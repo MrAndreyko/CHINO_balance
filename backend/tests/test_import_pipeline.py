@@ -34,7 +34,7 @@ client = TestClient(app)
 
 
 def test_room_master_preview_csv_validation_errors() -> None:
-    content = "room_number,room_type,floor\n101,DELUXE,1\n102,,abc\n"
+    content = "room_number,room_type,bed_type,floor\n101,DELUXE,KING,1\n102,,KING,abc\n"
     response = client.post(
         "/api/v1/imports/room_master/preview",
         files={"file": ("rooms.csv", content, "text/csv")},
@@ -69,8 +69,8 @@ def test_request_code_rules_preview_and_commit_csv() -> None:
 def test_inventory_overrides_preview_xlsx_reports_unknown_room() -> None:
     workbook = Workbook()
     ws = workbook.active
-    ws.append(["room_number", "override_date", "capacity_delta", "reason"])
-    ws.append(["999", "2026-04-01", -1, "Maintenance"])
+    ws.append(["room_number", "override_date", "capacity_delta", "status", "reason"])
+    ws.append(["999", "2026-04-01", -1, "maintenance", "Maintenance"])
     stream = io.BytesIO()
     workbook.save(stream)
 
@@ -91,7 +91,7 @@ def test_inventory_overrides_preview_xlsx_reports_unknown_room() -> None:
 
 
 def test_reservations_preview_missing_column_reports_header_error() -> None:
-    content = "external_id,guest_name,arrival_date,departure_date\nR1,Jane,2026-04-01,2026-04-02\n"
+    content = "external_id,guest_name,arrival_date,departure_date,requested_bed_type\nR1,Jane,2026-04-01,2026-04-02,KING\n"
     response = client.post(
         "/api/v1/imports/reservations/preview",
         files={"file": ("reservations.csv", content, "text/csv")},

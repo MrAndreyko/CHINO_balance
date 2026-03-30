@@ -14,4 +14,5 @@ class InventoryOverride(TimestampMixin, Base):
     room_id: Mapped[int] = mapped_column(ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
     override_date: Mapped[date] = mapped_column(Date, nullable=False)
     capacity_delta: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="open", nullable=False)
     reason: Mapped[str] = mapped_column(String(255), nullable=False)
