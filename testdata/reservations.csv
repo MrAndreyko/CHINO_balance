@@ -1,0 +1,6 @@
+external_id,guest_name,arrival_date,departure_date,requested_room_type,requested_bed_type,club_access_entitled
+RES-1001,Alice Exact,2026-04-03,2026-04-05,TNK,KING,false
+RES-1002,Bob ClubBooked,2026-04-03,2026-04-05,CLHF,KING,true
+RES-1003,Cara DoubleADA,2026-04-03,2026-04-04,TND,DOUBLE,false
+RES-1004,Dan KingUpgrade,2026-04-03,2026-04-04,TNK,KING,false
+RES-1005,Evan KingUpgrade,2026-04-03,2026-04-04,TNK,KING,false

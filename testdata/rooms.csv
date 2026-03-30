@@ -1,0 +1,10 @@
+room_number,room_type,bed_type,floor,is_hardblocked,is_accessible,is_near_elevator,is_club_floor
+101,TNK,KING,1,false,false,true,false
+102,TNK,KING,1,false,false,false,false
+201,TND,DOUBLE,2,false,false,true,false
+202,TND,DOUBLE,2,false,true,true,false
+301,CLHF,KING,3,false,false,false,true
+302,CLHF,KING,3,false,false,true,true
+401,RVK,KING,4,false,false,false,false
+402,RVK,KING,4,false,false,false,false
+501,STE,KING,5,true,false,false,false

@@ -1,0 +1,10 @@
+code,description,default_weight
+A1,Rooms Side by Side,4
+A5,Mobility Accessible w/Tub,10
+A9,Mob Acc w/Roll-in Shower,10
+B4,Hearing Accessible,10
+B7,Away From Elevator,2
+C1,Connecting Door,4
+H1,High Floor Room,2
+N1,Near Elevator,2
+R4,Refrigerator,0
