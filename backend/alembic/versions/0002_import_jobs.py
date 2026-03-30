@@ -4,6 +4,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "0002_import_jobs"
@@ -12,38 +13,22 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+IMPORT_DATASET_VALUES = ("room_master", "request_code_rules", "reservations", "inventory_overrides")
+IMPORT_JOB_STATUS_VALUES = ("preview_ready", "committed", "failed")
+
+
 def upgrade() -> None:
     bind = op.get_bind()
 
-    import_dataset = sa.Enum(
-        "room_master",
-        "request_code_rules",
-        "reservations",
-        "inventory_overrides",
-        name="import_dataset",
-    )
-    import_job_status = sa.Enum("preview_ready", "committed", "failed", name="import_job_status")
+    # Create enum types once at the DB level.
+    import_dataset_type = postgresql.ENUM(*IMPORT_DATASET_VALUES, name="import_dataset")
+    import_job_status_type = postgresql.ENUM(*IMPORT_JOB_STATUS_VALUES, name="import_job_status")
+    import_dataset_type.create(bind, checkfirst=True)
+    import_job_status_type.create(bind, checkfirst=True)
 
-    # Explicitly create PostgreSQL enum types once (idempotent with checkfirst=True).
-    import_dataset.create(bind, checkfirst=True)
-    import_job_status.create(bind, checkfirst=True)
-
-    # Reuse existing types in table DDL without emitting CREATE TYPE again.
-    import_dataset_column = sa.Enum(
-        "room_master",
-        "request_code_rules",
-        "reservations",
-        "inventory_overrides",
-        name="import_dataset",
-        create_type=False,
-    )
-    import_job_status_column = sa.Enum(
-        "preview_ready",
-        "committed",
-        "failed",
-        name="import_job_status",
-        create_type=False,
-    )
+    # Reuse the already-created enum types in table columns without emitting CREATE TYPE.
+    import_dataset_column = postgresql.ENUM(*IMPORT_DATASET_VALUES, name="import_dataset", create_type=False)
+    import_job_status_column = postgresql.ENUM(*IMPORT_JOB_STATUS_VALUES, name="import_job_status", create_type=False)
 
     op.create_table(
         "import_jobs",
@@ -81,5 +66,5 @@ def downgrade() -> None:
     op.drop_table("import_job_errors")
     op.drop_table("import_jobs")
 
-    sa.Enum("preview_ready", "committed", "failed", name="import_job_status").drop(bind, checkfirst=True)
-    sa.Enum("room_master", "request_code_rules", "reservations", "inventory_overrides", name="import_dataset").drop(bind, checkfirst=True)
+    postgresql.ENUM(*IMPORT_JOB_STATUS_VALUES, name="import_job_status").drop(bind, checkfirst=True)
+    postgresql.ENUM(*IMPORT_DATASET_VALUES, name="import_dataset").drop(bind, checkfirst=True)

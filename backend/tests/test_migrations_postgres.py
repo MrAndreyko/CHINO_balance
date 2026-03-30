@@ -6,6 +6,11 @@ from urllib.parse import urlparse
 import psycopg
 import pytest
 
+try:
+    from testcontainers.postgres import PostgresContainer
+except Exception:  # pragma: no cover
+    PostgresContainer = None
+
 
 REQUIRED_TABLES = {
     "request_code_rules",
@@ -17,16 +22,8 @@ REQUIRED_TABLES = {
 }
 
 
-@pytest.mark.integration
-def test_fresh_postgres_migration_chain() -> None:
-    database_url = os.getenv("TEST_DATABASE_URL")
-    if not database_url:
-        pytest.skip("TEST_DATABASE_URL is not set; skipping PostgreSQL migration integration test")
-
+def _run_alembic_upgrade_and_assert_tables(database_url: str) -> None:
     parsed = urlparse(database_url)
-    if parsed.scheme not in {"postgresql", "postgres"}:
-        pytest.skip("TEST_DATABASE_URL must be a PostgreSQL URL")
-
     repo_backend = Path(__file__).resolve().parents[1]
 
     env = os.environ.copy()
@@ -54,3 +51,28 @@ def test_fresh_postgres_migration_chain() -> None:
 
     missing = REQUIRED_TABLES - tables
     assert not missing, f"Missing required tables after migration: {sorted(missing)}"
+
+
+@pytest.mark.integration
+def test_fresh_postgres_migration_chain_from_env_url() -> None:
+    database_url = os.getenv("TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("TEST_DATABASE_URL is not set; skipping env-backed PostgreSQL migration integration test")
+
+    parsed = urlparse(database_url)
+    if parsed.scheme not in {"postgresql", "postgres"}:
+        pytest.skip("TEST_DATABASE_URL must be a PostgreSQL URL")
+
+    _run_alembic_upgrade_and_assert_tables(database_url)
+
+
+@pytest.mark.integration
+def test_fresh_postgres_migration_chain_with_testcontainer() -> None:
+    if PostgresContainer is None:
+        pytest.skip("testcontainers is not installed")
+
+    try:
+        with PostgresContainer("postgres:16") as pg:
+            _run_alembic_upgrade_and_assert_tables(pg.get_connection_url())
+    except Exception as exc:  # pragma: no cover
+        pytest.skip(f"Docker/Testcontainers not available in this environment: {exc}")
