@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16
+    container_name: hrb_db
+    environment:
+      POSTGRES_DB: hotel_balancer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hotel_balancer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: hrb_backend
+    env_file:
+      - .env
+    environment:
+      HRB_DB_HOST: db
+      HRB_DB_PORT: 5432
+      HRB_DB_USER: postgres
+      HRB_DB_PASSWORD: postgres
+      HRB_DB_NAME: hotel_balancer
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    container_name: hrb_frontend
+    working_dir: /frontend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./frontend:/frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
