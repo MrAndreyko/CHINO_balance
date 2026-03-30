@@ -9,7 +9,7 @@ This repository contains a production-structured starter for a self-hosted hotel
 - **Frontend**: React (Vite scaffold)
 - **Orchestration**: Docker Compose
 
-> Scope of this bootstrap: structure, database setup, models, migrations, seed data, and local run flow.
+> Scope of this bootstrap: structure, database setup, models, migrations, seed data, import pipelines, and local run flow.
 > Not included yet: optimizer logic, PMS integrations, machine learning.
 
 ## Project Structure
@@ -18,42 +18,31 @@ This repository contains a production-structured starter for a self-hosted hotel
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/endpoints/health.py
-│   │   ├── api/v1/router.py
+│   │   ├── api/v1/endpoints/
+│   │   │   ├── health.py
+│   │   │   └── imports.py
 │   │   ├── core/config.py
 │   │   ├── db/
-│   │   │   ├── base.py
-│   │   │   └── session.py
 │   │   ├── models/
-│   │   │   ├── assignment_result.py
-│   │   │   ├── assignment_run.py
-│   │   │   ├── compatibility_rule.py
-│   │   │   ├── inventory_override.py
-│   │   │   ├── manual_override.py
-│   │   │   ├── request_code_rule.py
-│   │   │   ├── reservation.py
-│   │   │   ├── reservation_request.py
-│   │   │   ├── room.py
-│   │   │   └── weights_config.py
+│   │   ├── schemas/imports.py
+│   │   ├── services/import_pipeline.py
 │   │   └── main.py
-│   ├── alembic/
-│   │   ├── versions/0001_initial_schema.py
-│   │   ├── env.py
-│   │   └── script.py.mako
+│   ├── alembic/versions/
+│   │   ├── 0001_initial_schema.py
+│   │   └── 0002_import_jobs.py
 │   ├── scripts/seed_defaults.py
+│   ├── tests/test_import_pipeline.py
 │   ├── alembic.ini
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
-│   ├── src/main.tsx
-│   ├── package.json
-│   └── vite.config.ts
 ├── docker-compose.yml
 └── .env.example
 ```
 
 ## Database Entities in v1
 
+Core entities:
 - rooms
 - reservations
 - reservation_requests
@@ -64,6 +53,10 @@ This repository contains a production-structured starter for a self-hosted hotel
 - weights_config
 - compatibility_rules
 - manual_overrides
+
+Import pipeline entities:
+- import_jobs
+- import_job_errors
 
 ## Local Run Instructions
 
@@ -91,21 +84,47 @@ docker compose exec backend alembic upgrade head
 docker compose exec backend python -m scripts.seed_defaults
 ```
 
-### 5) Verify services
+### 5) Import APIs (preview + commit)
+
+Supported datasets:
+- `room_master`
+- `request_code_rules`
+- `reservations`
+- `inventory_overrides`
+
+Supported formats:
+- CSV
+- XLSX
+
+Preview import (validation + row-level errors):
+
+```bash
+curl -X POST \
+  -F "file=@./samples/rooms.csv" \
+  http://localhost:8000/api/v1/imports/room_master/preview
+```
+
+Commit preview job:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/imports/{job_id}/commit
+```
+
+Check import status/errors:
+
+```bash
+curl http://localhost:8000/api/v1/imports/{job_id}
+```
+
+### 6) Verify services
 
 - Backend health: `http://localhost:8000/api/v1/health`
 - Backend docs: `http://localhost:8000/docs`
 - Frontend: `http://localhost:5173`
 
-## Development Notes
+## Testing
 
-- SQLAlchemy metadata naming conventions are configured for predictable constraints.
-- Alembic is wired to application settings and includes an initial migration file.
-- Seed script is idempotent (safe to run multiple times).
-
-## Next Suggested Milestones
-
-1. Introduce Pydantic schemas and CRUD services.
-2. Add unit/integration tests with pytest + testcontainers.
-3. Implement assignment orchestration API surface (without optimizer internals yet).
-4. Add auth and audit logging.
+```bash
+cd backend
+pytest -q
+```
